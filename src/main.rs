@@ -33,22 +33,34 @@ impl InstructionPointer {
         }
     }
 
-    fn next(&mut self) -> Option<char> {
-        if self.idx == self.chars.len() {
-            self.idx = self.chars.len();
-            None
-        } else {
+    fn peek(&self) -> Option<char> {
+        self.chars.get(self.idx).cloned()
+    }
+
+    /* for advance and retreat, return value is whether it moved or not */
+
+    fn advance(&mut self) -> bool {
+        if self.idx < self.chars.len() {
             self.idx += 1;
-            self.chars.get(self.idx - 1).cloned()
+            true
+        } else {
+            false
         }
     }
 
-    fn current_location(&self) -> usize {
-        self.idx
+    fn retreat(&mut self) -> bool {
+        if self.idx > 0 {
+            self.idx -= 1;
+            true
+        } else {
+            false
+        }
     }
 
-    fn goto(&mut self, location: usize) {
-        self.idx = location;
+    fn next(&mut self) -> Option<char> {
+        let instr = self.peek();
+        self.advance();
+        instr
     }
 }
 
@@ -133,7 +145,56 @@ impl BrainFuck {
                     let mut byte: [u8; 1] = [0];
                     stdin.read(&mut byte);
                     self.data_pointer.set(byte[0] as u32);
-                }
+                },
+                '[' => {
+                    // println!("1st LBRACK");
+                    if self.data_pointer.is_zero() {
+                        let mut num_lbrackets = 0;
+                        loop {
+                            let instr = self.instr_pointer.next().expect("no matching ] before end of file");
+                            match instr {
+                                '[' => {
+                                    // println!("LBRACK");
+                                    num_lbrackets += 1
+                                },
+                                ']' => {
+                                    // println!("RBRACK");
+                                    if num_lbrackets == 0 { break }
+                                    num_lbrackets -= 1
+                                },
+                                _ => {}
+                            }
+                        }
+                        // println!("DONE")
+                    }
+                },
+                ']' => {
+                    // println!("1st RBRACK");
+                    if !self.data_pointer.is_zero() {
+                        let mut num_rbrackets = 0;
+                        // extra retreat needed so we don't read ourselves
+                        self.instr_pointer.retreat();
+                        loop {
+                            if self.instr_pointer.retreat() {
+                                match self.instr_pointer.peek().unwrap() {
+                                    ']' => {
+                                        // println!("RBRACK");
+                                        num_rbrackets += 1
+                                    },
+                                    '[' => {
+                                        // println!("LBRACK");
+                                        if num_rbrackets == 0 { break }
+                                        num_rbrackets -= 1
+                                    },
+                                    _ => {}
+                                }
+                            } else {
+                                panic!("no matching [ in file");
+                            }
+                        }
+                        // println!("DONE")
+                    }
+                },
                 _ => {}
             }
         }
