@@ -1,6 +1,8 @@
-use std::io::Read;
+use std::io::{Read, Write, Stdin, Stdout};
 use std::mem;
 use std::collections::VecDeque;
+
+use std::char::from_u32;
 
 fn main() {
     let mut args = std::env::args();
@@ -13,6 +15,7 @@ fn main() {
     let stdout = std::io::stdout();
 
     let brainfuck = BrainFuck::new(&source_buf);
+    brainfuck.process_instructions(stdin, stdout);
 }
 
 struct InstructionPointer {
@@ -31,12 +34,12 @@ impl InstructionPointer {
     }
 
     fn next(&mut self) -> Option<char> {
-        self.idx += 1;
-        if self.idx >= self.chars.len() {
+        if self.idx == self.chars.len() {
             self.idx = self.chars.len();
             None
         } else {
-            Some(self.chars[self.idx])
+            self.idx += 1;
+            self.chars.get(self.idx - 1).cloned()
         }
     }
 
@@ -50,7 +53,7 @@ impl InstructionPointer {
 }
 
 struct DataPointer {
-    cells: VecDeque<u64>,
+    cells: VecDeque<u32>,
     idx: isize,
     cells_offset: isize
 }
@@ -89,11 +92,11 @@ impl DataPointer {
         self.cells[(self.cells_offset + self.idx) as usize] -= 1;
     }
 
-    fn set(&mut self, value: u64) {
+    fn set(&mut self, value: u32) {
         self.cells[(self.cells_offset + self.idx) as usize] = value;
     }
 
-    fn get(&self) -> u64 {
+    fn get(&self) -> u32 {
         self.cells[(self.cells_offset + self.idx) as usize]
     }
 
@@ -112,6 +115,24 @@ impl BrainFuck {
         BrainFuck {
             data_pointer: DataPointer::new(),
             instr_pointer: InstructionPointer::new(&source),
+        }
+    }
+
+    fn process_instructions (&mut self, mut stdin: Stdin, mut stdout: Stdout) {
+        while let Some(instr) = self.instr_pointer.next() {
+            match instr {
+                '+' => self.data_pointer.inc(),
+                '-' => self.data_pointer.dec(),
+                '>' => self.data_pointer.advance(),
+                '<' => self.data_pointer.retreat(),
+                '.' => {
+                    let c = from_u32(self.data_pointer.get()).unwrap();
+                    let mut buf: [u8; 4] = [0,0,0,0];
+                    let bytes = c.encode_utf8(&mut buf).as_bytes();
+                    stdout.write(bytes).unwrap();
+                },
+                _ => {}
+            }
         }
     }
 }
