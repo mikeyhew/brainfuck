@@ -11,11 +11,11 @@ fn main() {
     let mut source_buf = String::new();
     source_file.read_to_string(&mut source_buf).unwrap();
 
-    let stdin = std::io::stdin();
-    let stdout = std::io::stdout();
+    let mut stdin = std::io::stdin();
+    let mut stdout = std::io::stdout();
 
-    let brainfuck = BrainFuck::new(&source_buf);
-    brainfuck.process_instructions(stdin, stdout);
+    let mut brainfuck = BrainFuck::new(&source_buf);
+    brainfuck.process_instructions(&mut stdin, &mut stdout);
 }
 
 struct InstructionPointer {
@@ -118,7 +118,7 @@ impl BrainFuck {
         }
     }
 
-    fn process_instructions (&mut self, mut stdin: Stdin, mut stdout: Stdout) {
+    fn process_instructions (&mut self, stdin: &mut Stdin, stdout: &mut Stdout) {
         while let Some(instr) = self.instr_pointer.next() {
             match instr {
                 '+' => self.data_pointer.inc(),
@@ -126,11 +126,14 @@ impl BrainFuck {
                 '>' => self.data_pointer.advance(),
                 '<' => self.data_pointer.retreat(),
                 '.' => {
-                    let c = from_u32(self.data_pointer.get()).unwrap();
-                    let mut buf: [u8; 4] = [0,0,0,0];
-                    let bytes = c.encode_utf8(&mut buf).as_bytes();
-                    stdout.write(bytes).unwrap();
+                    let byte = [self.data_pointer.get() as u8];
+                    stdout.write(&byte);
                 },
+                ',' => {
+                    let mut byte: [u8; 1] = [0];
+                    stdin.read(&mut byte);
+                    self.data_pointer.set(byte[0] as u32);
+                }
                 _ => {}
             }
         }
