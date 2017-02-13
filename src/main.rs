@@ -172,7 +172,7 @@ impl BrainFuck {
                     // println!("1st RBRACK");
                     if !self.data_pointer.is_zero() {
                         let mut num_rbrackets = 0;
-                        // extra retreat needed so we don't read ourselves
+                        // extra retreat needed so we don't read the same ] again
                         self.instr_pointer.retreat();
                         loop {
                             if self.instr_pointer.retreat() {
